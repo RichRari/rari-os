@@ -50,6 +50,32 @@ In `.env`, set `RARI_OS_WATCH` to one or more folders, comma-separated:
 `RARI_OS_WATCH=~/Documents,~/Desktop`. The first run records a baseline; every run
 after that reports changes against it.
 
+## Test it
+```bash
+./test.sh
+```
+Starts a throwaway copy of Rari OS on a spare port with its own temporary database
+(your real data and API credits are never touched), checks every page, endpoint and
+agent, then fires 200 requests at once to catch crashes that only show up under load.
+It ends with **ALL PASS** or **FAILED** plus what broke.
+
+## Updating to a new version
+Every update comes as a complete folder with the version in its name (`rari-os-v0.4`,
+`rari-os-v0.5`, ...) so it can never collide with other files in Downloads. To move your
+settings and history over from the version you're running now:
+```bash
+cd ~/Downloads/rari-os-vNEW
+cp ../rari-os-vOLD/.env . ; cp -R ../rari-os-vOLD/data . 2>/dev/null
+./test.sh && ./run.sh
+```
+`./run.sh` only runs after the self-test passes.
+
+## Release rules (how changes get made)
+1. Every change is tested on the same Python version as the Mac mini (3.14) before release.
+2. `./test.sh` must end in ALL PASS before a release goes out.
+3. A bug that slips through gets its own check in `selftest.py`, so it can't come back.
+4. Updates ship as whole versioned folders, never as loose files.
+
 ## Security notes
 - The control panel listens on `127.0.0.1` only, so nothing else on your network can reach it.
 - Your API key stays in `.env` on your Mac. Don't commit `.env` to GitHub (`.gitignore` already excludes it).

@@ -1,12 +1,14 @@
 """SQLite storage: agent settings, run history, and chat messages."""
 from __future__ import annotations
 import json
+import os
 import sqlite3
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "rari_os.db"
+DATA_DIR = Path(os.getenv("RARI_OS_DATA") or Path(__file__).resolve().parent.parent / "data")
+DB_PATH = DATA_DIR / "rari_os.db"
 _lock = threading.RLock()
 _local = threading.local()
 _initialized = False
