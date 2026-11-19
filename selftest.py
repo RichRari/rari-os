@@ -67,6 +67,8 @@ def main():
         status, page = request(base, "/")
         check("Control panel loads (RARI//OS)", status == 200 and "<title>RARI//OS</title>" in page)
 
+        check("AI replies render formatting (bold, lists, code)", "function renderMd" in page and "renderMd(body" in page)
+
         for path in ("/api/status", "/api/agents", "/api/runs?limit=5", "/api/chat",
                      "/api/runs?agent=system_health&limit=1"):
             try:
