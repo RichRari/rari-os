@@ -97,8 +97,43 @@ CHAT_SYSTEM = (
     "You can see the current state of every agent and their most recent reports, given below. "
     "Answer questions about what the agents found, explain alerts the way a SOC analyst would, "
     "and suggest next steps. If asked to do something no agent can do yet, say so and describe "
-    "what new agent would do it. Be concise.\n\nCURRENT AGENT STATE:\n"
+    "what new agent would do it. Be concise. All times below are already in Rari's local time; "
+    "always speak in local time. Alert runs include full details such as file paths: use them.\n\n"
 )
+
+
+def to_local(iso):
+    """UTC ISO timestamp -> readable local time, e.g. 'Thu Nov 19, 6:52 PM'."""
+    if not iso:
+        return None
+    from datetime import datetime
+    d = datetime.fromisoformat(iso).astimezone()
+    return d.strftime("%a %b %d, ") + d.strftime("%I:%M %p").lstrip("0")
+
+
+def build_chat_context() -> str:
+    """Everything the AI core sees: agent state, recent runs, and full details of alerts."""
+    from datetime import datetime
+    now = datetime.now().astimezone()
+    runs = db.recent_runs(40)
+    latest_seen = set()
+    compact = []
+    for r in runs:
+        item = {"agent": r["agent"], "time": to_local(r["started"]), "status": r["status"],
+                "summary": r["summary"]}
+        first_of_agent = r["agent"] not in latest_seen
+        latest_seen.add(r["agent"])
+        if r["status"] in ("alert", "error") or first_of_agent:
+            details = json.dumps(r["details"], default=str)
+            item["details"] = details if len(details) <= 3000 else details[:3000] + "...(truncated)"
+        compact.append(item)
+    agent_state = []
+    for a in agents():
+        a = dict(a)
+        a["last_run"] = to_local(a.get("last_run"))
+        agent_state.append(a)
+    return (f"CURRENT LOCAL TIME: {to_local(now.astimezone().isoformat())} ({now.tzname()})\n\n"
+            "CURRENT AGENT STATE:\n" + json.dumps({"agents": agent_state, "recent_runs": compact}, default=str))
 
 
 @app.get("/api/chat")
@@ -111,9 +146,7 @@ async def chat(body: Chat):
     text = body.message.strip()
     if not text:
         raise HTTPException(400, "Empty message")
-    context = json.dumps({"agents": agents(), "recent_runs": [
-        {k: r[k] for k in ("agent", "started", "status", "summary")} for r in db.recent_runs(40)
-    ]}, default=str)
+    context = build_chat_context()
     history = [{"role": m["role"], "content": m["content"]} for m in db.recent_messages(12)]
     db.add_message("user", text)
     reply = await run_in_threadpool(

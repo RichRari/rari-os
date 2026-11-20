@@ -120,6 +120,17 @@ def main():
             server.kill()
         log.close()
 
+    # Nov 19: the AI core could not see alert file paths and spoke in UTC.
+    os.environ["RARI_OS_DATA"] = env["RARI_OS_DATA"]
+    sys.path.insert(0, str(ROOT))
+    try:
+        from rari_os.main import build_chat_context
+        ctx = build_chat_context()
+        check("AI core sees alert details (file names)", "b.txt" in ctx)
+        check("AI core sees local time, not raw UTC", "CURRENT LOCAL TIME" in ctx and "+00:00" not in ctx)
+    except Exception as e:
+        check("AI core context builds", False, e)
+
     errors = [ln for ln in log_path.read_text().splitlines()
               if "Traceback" in ln or "Error" in ln and "INFO" not in ln]
     check("No errors in server log", not errors, errors[:3])
