@@ -246,6 +246,7 @@ const api = async (path, opts = {}) => {
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 };
+const plain = (t) => String(t || '').replace(/\*\*|`/g, '').replace(/^#+\s*/, '');
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const ago = (iso) => {
   if (!iso) return 'never';
@@ -352,7 +353,7 @@ async function loadAgents() {
     pw.type = 'button';
     pw.onclick = async () => { await api(`/api/agents/${a.name}`, { method: 'PATCH', body: JSON.stringify({ enabled: !a.enabled }) }); refresh(); };
     top.append(pw);
-    c.append(top, el('div', 'desc', a.description), el('div', 'readout', a.running ? '>> executing…' : '>> ' + (a.last_summary || 'awaiting first run')));
+    c.append(top, el('div', 'desc', a.description), el('div', 'readout', a.running ? '>> executing…' : '>> ' + (plain(a.last_summary) || 'awaiting first run')));
     c.append(el('div', 'meta', `LAST RUN ${ago(a.last_run).toUpperCase()}`));
     const row = el('div', 'row');
     const run = el('button', 'btn', '▶ EXECUTE');
@@ -381,7 +382,7 @@ async function loadLog() {
     const d = new Date(r.started);
     const ln = el('div', 'ln' + (!firstLoad && !seen.has(r.id) ? ' new' : ''));
     ln.append(el('span', 'ts', `[${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}]`),
-      el('span', 'ag', r.agent), el('span', 'st ' + r.status, r.status.toUpperCase()), el('span', 'sm', r.summary));
+      el('span', 'ag', r.agent), el('span', 'st ' + r.status, r.status.toUpperCase()), el('span', 'sm', plain(r.summary)));
     let det;
     if (r.details.briefing) { det = el('div', 'det'); renderMd(det, r.details.briefing); }
     else det = el('pre', 'det', JSON.stringify(r.details, null, 2));
@@ -416,12 +417,12 @@ function renderMd(target, text) {
     let m;
     if (!line.trim()) { flush(); list = null; continue; }
     if ((m = line.match(/^#{1,6}\s+(.*)$/))) { flush(); list = null; const h = el('div', 'md-h'); mdInline(h, m[1]); target.append(h); continue; }
-    const bullet = line.match(/^\s*[-*•]\s+(.*)$/), num = line.match(/^\s*\d+[.)]\s+(.*)$/);
+    const bullet = line.match(/^\s*[-*•]\s+(.*)$/), num = line.match(/^\s*(\d+)[.)]\s+(.*)$/);
     if (bullet || num) {
       flush();
       const tag = bullet ? 'ul' : 'ol';
       if (!list || list.tagName.toLowerCase() !== tag) { list = el(tag); target.append(list); }
-      const li = el('li'); mdInline(li, (bullet || num)[1]); list.append(li);
+      const li = el('li'); if (num) li.value = +num[1]; mdInline(li, bullet ? bullet[1] : num[2]); list.append(li);
       continue;
     }
     list = null; para.push(line.trim());

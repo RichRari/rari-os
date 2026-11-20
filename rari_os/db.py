@@ -18,6 +18,14 @@ def now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+def to_local(iso):
+    """UTC ISO timestamp -> readable local time, e.g. 'Thu Nov 19, 6:52 PM'."""
+    if not iso:
+        return None
+    d = datetime.fromisoformat(iso).astimezone()
+    return d.strftime("%a %b %d, ") + d.strftime("%I:%M %p").lstrip("0")
+
+
 def connect() -> sqlite3.Connection:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     c = sqlite3.connect(DB_PATH, timeout=30)

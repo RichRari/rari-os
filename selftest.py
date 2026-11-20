@@ -131,6 +131,16 @@ def main():
     except Exception as e:
         check("AI core context builds", False, e)
 
+    # Nov 19: the Daily Briefing spoke in UTC, couldn't see file names, and previews showed raw **.
+    try:
+        from rari_os.agents.daily_briefing import build_briefing_input, plain
+        _, briefing_in = build_briefing_input()
+        check("Briefing sees alert details and local time", "b.txt" in briefing_in and "+00:00" not in briefing_in)
+        check("Briefing preview has no raw Markdown", plain("**Status:** healthy") == "Status: healthy")
+    except Exception as e:
+        check("Briefing input builds", False, e)
+    check("Numbered lists keep their numbers", "li.value = +num[1]" in page)
+
     errors = [ln for ln in log_path.read_text().splitlines()
               if "Traceback" in ln or "Error" in ln and "INFO" not in ln]
     check("No errors in server log", not errors, errors[:3])
